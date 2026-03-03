@@ -138,16 +138,55 @@ class GitLabTracker(rumps.App):
             self._start_background_refresh()
         else:
             self.title = "⬆ ⚠"
-            missing = []
-            if not self.config.get("gitlab_base_url"):
-                missing.append("GitLab URL")
-            if not self.config.get("token"):
-                missing.append("token")
-            rumps.notification(
-                "GitLab Tracker",
-                "Configuration Required",
-                f"Please set your {' and '.join(missing)} in Settings.",
-            )
+            self._prompt_initial_setup()
+
+    def _prompt_initial_setup(self):
+        rumps.Timer(self._run_setup_dialog, 0.5).start()
+
+    def _run_setup_dialog(self, timer):
+        timer.stop()
+
+        if not self.config.get("gitlab_base_url"):
+            url_resp = rumps.Window(
+                title="Welcome to GitLab Tracker",
+                message="Enter your GitLab instance URL (e.g. https://gitlab.example.com):",
+                default_text="",
+                ok="Next",
+                cancel="Quit",
+            ).run()
+            if not url_resp.clicked:
+                rumps.quit_application()
+                return
+            self.config["gitlab_base_url"] = url_resp.text.strip().rstrip("/")
+
+        if not self.config.get("token"):
+            token_resp = rumps.Window(
+                title="GitLab Private Token",
+                message=(
+                    "Enter your GitLab Private Access Token.\n\n"
+                    f"Create one at: {self.config['gitlab_base_url']}/-/user_settings/personal_access_tokens"
+                ),
+                default_text="",
+                ok="Save",
+                cancel="Quit",
+            ).run()
+            if not token_resp.clicked:
+                rumps.quit_application()
+                return
+            self.config["token"] = token_resp.text.strip()
+
+        if not self.config.get("token") or not self.config.get("gitlab_base_url"):
+            rumps.notification("GitLab Tracker", "Setup Incomplete", "Token and URL are required.")
+            rumps.quit_application()
+            return
+
+        save_config(self.config)
+        rumps.notification(
+            "GitLab Tracker",
+            "Setup Complete",
+            f"Config saved to {CONFIG_FILE}\nYou can edit it anytime via Settings in the menu bar.",
+        )
+        self._start_background_refresh()
 
     def _start_background_refresh(self):
         self._fetch_and_schedule_ui_update()
