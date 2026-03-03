@@ -1,7 +1,5 @@
 # GitLab Contribution Tracker
 
-[![Homebrew Cask](https://img.shields.io/badge/brew%20install%20--cask-gitlab--contribution--tracker-blue?logo=homebrew)](https://github.com/Acanguven/homebrew-tap)
-
 A macOS menu bar application that tracks your daily GitLab push events and displays them in the menu bar.
 
 ## Features
@@ -27,6 +25,7 @@ brew install --cask gitlab-contribution-tracker
 ```
 
 The install script will:
+
 1. Create a Python virtual environment
 2. Install dependencies
 3. Build the macOS application (py2app)
@@ -55,23 +54,23 @@ Settings are stored in `~/.config/gitlab-contribution-tracker/config.json`:
 }
 ```
 
-| Key | Description | Default |
-|-----|-------------|---------|
-| `token` | GitLab Private Access Token (required) | `""` |
-| `gitlab_base_url` | GitLab instance URL | `https://gitlab.trendyol.com` |
-| `refresh_interval_seconds` | How often to poll for new events | `60` |
+| Key                        | Description                            | Default                       |
+| -------------------------- | -------------------------------------- | ----------------------------- |
+| `token`                    | GitLab Private Access Token (required) | `""`                          |
+| `gitlab_base_url`          | GitLab instance URL                    | `https://gitlab.trendyol.com` |
+| `refresh_interval_seconds` | How often to poll for new events       | `60`                          |
 
 The token must be set in the config file or via the **Settings...** option in the menu bar. The app uses this token to resolve your GitLab username automatically via the `/api/v4/user` endpoint.
 
 ## Menu Bar Indicators
 
-| Icon | Meaning |
-|------|---------|
-| ⬆ 0 | No pushes today |
-| 🟦 N | 1-9 pushes |
-| 🟩 N | 10-19 pushes |
-| 🟧 N | 20-29 pushes |
-| 🟥 N | 30+ pushes |
+| Icon | Meaning         |
+| ---- | --------------- |
+| ⬆ 0  | No pushes today |
+| 🟦 N | 1-9 pushes      |
+| 🟩 N | 10-19 pushes    |
+| 🟧 N | 20-29 pushes    |
+| 🟥 N | 30+ pushes      |
 
 ## Uninstall
 
