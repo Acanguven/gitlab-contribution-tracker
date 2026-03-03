@@ -56,3 +56,63 @@ jobs:
         with:
           files: "*.zip"
           generate_release_notes: true
+
+  update-tap:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get version
+        id: version
+        run: echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download release artifacts
+        run: |
+          curl -fSL -o arm64.zip "https://github.com/Acanguven/gitlab-contribution-tracker/releases/download/v${{ steps.version.outputs.tag }}/GitLab-Tracker-arm64.zip"
+          curl -fSL -o x86_64.zip "https://github.com/Acanguven/gitlab-contribution-tracker/releases/download/v${{ steps.version.outputs.tag }}/GitLab-Tracker-x86_64.zip"
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          echo "arm64=$(sha256sum arm64.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "x86_64=$(sha256sum x86_64.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tap repo
+        uses: actions/checkout@v4
+        with:
+          repository: Acanguven/tap
+          token: ${{ secrets.TAP_TOKEN }}
+
+      - name: Update cask formula
+        run: |
+          cat > Casks/gitlab-contribution-tracker.rb << 'CASK'
+          cask "gitlab-contribution-tracker" do
+            version "${{ steps.version.outputs.tag }}"
+
+            on_arm do
+              url "https://github.com/Acanguven/gitlab-contribution-tracker/releases/download/v#{version}/GitLab-Tracker-arm64.zip"
+              sha256 "${{ steps.sha.outputs.arm64 }}"
+            end
+
+            on_intel do
+              url "https://github.com/Acanguven/gitlab-contribution-tracker/releases/download/v#{version}/GitLab-Tracker-x86_64.zip"
+              sha256 "${{ steps.sha.outputs.x86_64 }}"
+            end
+
+            name "GitLab Contribution Tracker"
+            desc "macOS menu bar app that tracks daily GitLab push events"
+            homepage "https://github.com/Acanguven/gitlab-contribution-tracker"
+
+            app "GitLab Tracker.app"
+
+            zap trash: "~/.config/gitlab-contribution-tracker"
+          end
+          CASK
+          sed -i 's/^          //' Casks/gitlab-contribution-tracker.rb
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/gitlab-contribution-tracker.rb
+          git commit -m "Update gitlab-contribution-tracker to ${{ steps.version.outputs.tag }}"
+          git push
