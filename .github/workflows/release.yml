@@ -1,0 +1,58 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            python-arch: arm64
+          - arch: x86_64
+            python-arch: x64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          architecture: ${{ matrix.python-arch }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build .app bundle
+        run: python setup.py py2app --no-strip 2>/dev/null || python setup.py py2app
+
+      - name: Create zip archive
+        run: |
+          cd dist
+          zip -r "../GitLab-Tracker-${{ matrix.arch }}.zip" "GitLab Tracker.app"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.arch }}
+          path: "GitLab-Tracker-${{ matrix.arch }}.zip"
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.zip"
+          generate_release_notes: true

@@ -11,7 +11,14 @@ A macOS menu bar application that tracks your daily GitLab push events and displ
 - Dynamic user profile resolution from token
 - Contribution reminder notification if no pushes by 15:00
 
-## Quick Install
+## Install via Homebrew
+
+```bash
+brew tap acanguven/tap
+brew install --cask gitlab-contribution-tracker
+```
+
+## Quick Install (from source)
 
 ```bash
 ./install.sh
