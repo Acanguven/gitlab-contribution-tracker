@@ -1,5 +1,7 @@
 # GitLab Contribution Tracker
 
+[![Homebrew Cask](https://img.shields.io/badge/brew%20install%20--cask-gitlab--contribution--tracker-blue?logo=homebrew)](https://github.com/Acanguven/homebrew-tap)
+
 A macOS menu bar application that tracks your daily GitLab push events and displays them in the menu bar.
 
 ## Features
