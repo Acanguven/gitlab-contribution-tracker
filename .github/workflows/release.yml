@@ -104,8 +104,6 @@ jobs:
 
             app "GitLab Tracker.app"
 
-            auto_updates true
-
             postflight do
               system_command "/usr/bin/xattr",
                              args: ["-dr", "com.apple.quarantine", "#{appdir}/GitLab Tracker.app"]

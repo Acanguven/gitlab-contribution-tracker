@@ -21,7 +21,7 @@ CACHE_FILE = CONFIG_DIR / "events_cache.json"
 DEFAULT_CONFIG = {
     "token": "",
     "gitlab_base_url": "",
-    "refresh_interval_seconds": 60,
+    "refresh_interval_seconds": 30,
 }
 
 
@@ -123,6 +123,7 @@ class GitLabTracker(rumps.App):
         self._reminder_shown_date = None
 
         self._project_keys = []
+        self._ui_update_pending = threading.Event()
 
         self.menu = [
             rumps.MenuItem("Today's Pushes: -", callback=self.open_profile),
@@ -189,20 +190,34 @@ class GitLabTracker(rumps.App):
         self._start_background_refresh()
 
     def _start_background_refresh(self):
-        self._fetch_and_schedule_ui_update()
-        interval = self.config.get("refresh_interval_seconds", 60)
+        self._fetch_data()
+        self._update_ui()
+
+        interval = self.config.get("refresh_interval_seconds", 30)
         self._timer = rumps.Timer(self._timer_refresh, interval)
         self._timer.start()
 
+        self._ui_poller = rumps.Timer(self._poll_ui_update, 0.5)
+        self._ui_poller.start()
+
+    def _poll_ui_update(self, _):
+        if self._ui_update_pending.is_set():
+            self._ui_update_pending.clear()
+            self._update_ui()
+
     def _timer_refresh(self, _):
-        thread = threading.Thread(target=self._fetch_and_schedule_ui_update, daemon=True)
+        thread = threading.Thread(target=self._bg_fetch, daemon=True)
         thread.start()
 
     def manual_refresh(self, _):
-        thread = threading.Thread(target=self._fetch_and_schedule_ui_update, daemon=True)
+        thread = threading.Thread(target=self._bg_fetch, daemon=True)
         thread.start()
 
-    def _fetch_and_schedule_ui_update(self):
+    def _bg_fetch(self):
+        self._fetch_data()
+        self._ui_update_pending.set()
+
+    def _fetch_data(self):
         token = self.config.get("token", "")
         base_url = self.config.get("gitlab_base_url", "")
         if not token:
@@ -214,7 +229,6 @@ class GitLabTracker(rumps.App):
         events = fetch_push_events(token, base_url)
         if events is None:
             self.error_state = True
-            self.title = f"⬆ {self.push_count}!"
             return
 
         self.error_state = False
@@ -225,11 +239,6 @@ class GitLabTracker(rumps.App):
 
         self._cache_events(events)
         self._check_contribution_reminder()
-        rumps.Timer(self._apply_ui_update, 0.1).start()
-
-    def _apply_ui_update(self, timer):
-        timer.stop()
-        self._update_ui()
 
     def _check_contribution_reminder(self):
         now = datetime.now()
@@ -251,6 +260,9 @@ class GitLabTracker(rumps.App):
             pass
 
     def _update_ui(self):
+        if self.error_state:
+            self.title = f"⬆ {self.push_count}!"
+            return
         color_indicator = self._activity_indicator(self.push_count)
         self.title = f"{color_indicator} {self.push_count}"
 
@@ -351,7 +363,7 @@ class GitLabTracker(rumps.App):
             if not hasattr(self, "_timer") or not self._timer.is_alive():
                 self._start_background_refresh()
             elif changed:
-                self._fetch_and_schedule_ui_update()
+                self.manual_refresh(None)
 
     def quit_app(self, _):
         rumps.quit_application()
